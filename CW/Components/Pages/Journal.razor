@@ -1,0 +1,96 @@
+﻿@page "/journal"
+
+<h3>Today's Entry (@DateTime.Today.ToShortDateString())</h3>
+
+<textarea @bind="Content"></textarea>
+<br />
+
+<h4>Tags</h4>
+<div class="tags-container">
+    @foreach (var tag in PrebuiltTags)
+    {
+        <label class="tag-option">
+            <input type="checkbox"
+                   checked="@SelectedTags.Contains(tag)"
+                   @onchange="(e => ToggleTag(tag, ((ChangeEventArgs)e).Value))" />
+            <span>@tag</span>
+        </label>
+    }
+</div>
+
+<h4>Mood</h4>
+<div class="mood-container">
+    <label>Primary Mood (required):</label>
+    <select @bind="PrimaryMood">
+        <option value="">-- Select Mood --</option>
+        @foreach (var mood in MoodCategories)
+        {
+            <option value="@mood">@mood</option>
+        }
+    </select>
+
+    <label>Secondary Moods (optional):</label>
+    <select multiple @onchange="OnSecondaryMoodChanged">
+        @foreach (var mood in MoodCategories)
+        {
+            <option value="@mood">@mood</option>
+        }
+    </select>
+</div>
+
+@code {
+    private string Content { get; set; } = "";
+
+    // Prebuilt tags list
+    private List<string> PrebuiltTags = new()
+    {
+        "Work","Career","Studies","Family","Friends","Relationships",
+        "Health","Fitness","Personal Growth","Self-care","Hobbies","Travel","Nature",
+        "Finance","Spirituality","Birthday","Holiday","Vacation","Celebration","Exercise",
+        "Reading","Writing","Cooking","Meditation","Yoga","Music","Shopping","Parenting",
+        "Projects","Planning","Reflection"
+    };
+
+    // Selected tags
+    private List<string> SelectedTags { get; set; } = new();
+
+    // Mood categories
+    private List<string> MoodCategories = new()
+    {
+        "Happy","Excited","Relaxed","Grateful","Confident",
+        "Calm","Thoughtful","Curious","Nostalgic","Bored",
+        "Sad","Angry","Stressed","Lonely","Anxious"
+    };
+
+    // Mood selections
+    private string PrimaryMood { get; set; } = "";
+    private List<string> SecondaryMoods { get; set; } = new();
+
+    // Handle tag toggle
+    private void ToggleTag(string tag, object? isChecked)
+    {
+        bool checkedValue = isChecked is bool b && b;
+        if (checkedValue)
+        {
+            if (!SelectedTags.Contains(tag))
+                SelectedTags.Add(tag);
+        }
+        else
+        {
+            if (SelectedTags.Contains(tag))
+                SelectedTags.Remove(tag);
+        }
+    }
+
+    private void OnSecondaryMoodChanged(ChangeEventArgs e)
+    {
+        if (e.Value is IEnumerable<string> values)
+        {
+            SecondaryMoods = values.ToList();
+        }
+        else if (e.Value is string singleValue)
+        {
+            SecondaryMoods = new List<string> { singleValue };
+        }
+    }
+}
