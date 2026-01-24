@@ -1,0 +1,459 @@
+﻿@page "/"
+@using JournalApp_CW.Models
+@using JournalApp_CW.Services
+@inject JournalService Db
+@inject IJSRuntime JS
+
+<!-- PREMIUM CSS STYLING -->
+<style>
+    /* Fixed: Removed @@import . Using modern system fonts. */
+    :root {
+        --primary: #6366f1; /* Indigo */
+        --primary-hover: #4f46e5;
+        --bg-color: #f3f4f6;
+        --surface: #ffffff;
+        --text-main: #1f2937;
+        --text-muted: #6b7280;
+        --border: #e5e7eb;
+        --success: #10b981;
+        --sidebar-width: 280px;
+    }
+
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        background-color: var(--bg-color);
+        margin: 0;
+        padding: 0;
+        color: var(--text-main);
+    }
+
+    .layout {
+        display: flex;
+        height: 100vh;
+        overflow: hidden;
+    }
+
+    /* --- SIDEBAR --- */
+    .sidebar {
+        width: var(--sidebar-width);
+        background: var(--surface);
+        border-right: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        padding: 24px;
+        z-index: 10;
+    }
+
+    .brand {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: var(--primary);
+        margin-bottom: 40px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .menu-item {
+        padding: 12px 16px;
+        border-radius: 12px;
+        color: var(--text-muted);
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+        .menu-item:hover {
+            background-color: #f9fafb;
+            color: var(--primary);
+        }
+
+        .menu-item.active {
+            background-color: #eef2ff;
+            color: var(--primary);
+        }
+
+    .streak-card {
+        margin-top: auto;
+        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+        padding: 20px;
+        border-radius: 16px;
+        color: white;
+        box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.4);
+        text-align: center;
+    }
+
+    .streak-count {
+        font-size: 2rem;
+        font-weight: 800;
+    }
+
+    .streak-label {
+        font-size: 0.85rem;
+        opacity: 0.9;
+    }
+
+    /* --- MAIN CONTENT --- */
+    .main {
+        flex: 1;
+        padding: 40px;
+        overflow-y: auto;
+        background-color: var(--bg-color);
+    }
+
+    .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+    }
+
+    .date-control {
+        background: var(--surface);
+        padding: 10px 20px;
+        border-radius: 12px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    input[type="date"] {
+        border: none;
+        font-family: inherit;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--text-main);
+        background: transparent;
+        outline: none;
+    }
+
+    /* --- EDITOR CARD --- */
+    .editor-card {
+        background: var(--surface);
+        border-radius: 20px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        padding: 40px;
+        max-width: 900px;
+        margin: 0 auto;
+    }
+
+    /* MOOD SECTION */
+    .section-title {
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--text-muted);
+        font-weight: 700;
+        margin-bottom: 15px;
+        display: block;
+    }
+
+    .mood-grid {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 30px;
+    }
+
+    .mood-item {
+        flex: 1;
+        background: #f9fafb;
+        border: 2px solid transparent;
+        border-radius: 16px;
+        padding: 15px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+        .mood-item:hover {
+            transform: translateY(-3px);
+            background: white;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+
+        .mood-item.selected {
+            border-color: var(--primary);
+            background-color: #eef2ff;
+            color: var(--primary);
+        }
+
+    .mood-emoji {
+        font-size: 2rem;
+        display: block;
+        margin-bottom: 5px;
+    }
+
+    .mood-name {
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+
+    /* TAGS */
+    .tags-wrapper {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 30px;
+    }
+
+    .tag-chip {
+        padding: 8px 16px;
+        background: #f3f4f6;
+        border-radius: 100px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--text-muted);
+        cursor: pointer;
+        transition: 0.2s;
+        border: 1px solid transparent;
+    }
+
+        .tag-chip:hover {
+            background: #e5e7eb;
+        }
+
+        .tag-chip.active {
+            background: var(--text-main);
+            color: white;
+        }
+
+    /* TEXT EDITOR IMITATION */
+    .rich-editor {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+        transition: border-color 0.2s;
+    }
+
+        .rich-editor:focus-within {
+            border-color: var(--primary);
+        }
+
+    .toolbar {
+        background: #f9fafb;
+        border-bottom: 1px solid var(--border);
+        padding: 10px 15px;
+        display: flex;
+        gap: 10px;
+    }
+
+    .tool-btn {
+        background: none;
+        border: none;
+        font-weight: bold;
+        color: var(--text-muted);
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 4px;
+    }
+
+        .tool-btn:hover {
+            background: #e5e7eb;
+            color: var(--text-main);
+        }
+
+    textarea {
+        width: 100%;
+        border: none;
+        padding: 20px;
+        font-family: 'Segoe UI', sans-serif;
+        font-size: 1.05rem;
+        line-height: 1.6;
+        min-height: 300px;
+        resize: none;
+        outline: none;
+        color: var(--text-main);
+    }
+
+    .action-row {
+        margin-top: 30px;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .status-text {
+        font-size: 0.9rem;
+        color: var(--text-muted);
+        font-style: italic;
+    }
+
+    .btn-primary {
+        background-color: var(--primary);
+        color: white;
+        padding: 12px 30px;
+        border: none;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 1rem;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        transition: 0.2s;
+    }
+
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+</style>
+
+<div class="layout">
+    <!-- LEFT SIDEBAR -->
+    <div class="sidebar">
+        <div class="brand">
+            <span style="background:var(--primary); color:white; padding:2px 8px; border-radius:6px;">J</span>
+            Journal.
+        </div>
+
+        <div class="menu-item active">📅 Daily Entry</div>
+        <div class="menu-item">📂 Archives</div>
+        <div class="menu-item">📈 Analytics</div>
+        <div class="menu-item">⚙️ Settings</div>
+
+        <div class="streak-card">
+            <div class="streak-count">🔥 3</div>
+            <div class="streak-label">Day Streak</div>
+            <div style="font-size: 0.7rem; margin-top:5px; opacity:0.8;">Keep it up!</div>
+        </div>
+    </div>
+
+    <!-- MAIN AREA -->
+    <div class="main">
+        <div class="header">
+            <div>
+                <h1 style="margin:0; font-size:1.8rem;">Good Afternoon</h1>
+                <span style="color:var(--text-muted);">Ready to capture your thoughts?</span>
+            </div>
+
+            <div class="date-control">
+                <span style="font-size:1.2rem; cursor:pointer;" @onclick="PrevDay">‹</span>
+                <input type="date" @bind="SelectedDate" @bind:after="LoadEntry" />
+                <span style="font-size:1.2rem; cursor:pointer;" @onclick="NextDay">›</span>
+            </div>
+        </div>
+
+        <div class="editor-card">
+
+            <!-- MOOD SELECTOR (VISUAL CARDS) -->
+            <label class="section-title">How was your day?</label>
+            <div class="mood-grid">
+                @foreach (var mood in Moods)
+                {
+                    <div class="mood-item @(CurrentEntry.PrimaryMood == mood.Name ? "selected" : "")"
+                         @onclick="() => SetMood(mood.Name)">
+                        <span class="mood-emoji">@mood.Emoji</span>
+                        <span class="mood-name">@mood.Name</span>
+                    </div>
+                }
+            </div>
+
+            <!-- TAGS (CHIPS) -->
+            <label class="section-title">Highlights & Tags</label>
+            <div class="tags-wrapper">
+                @foreach (var tag in PredefinedTags)
+                {
+                    <div class="tag-chip @(CurrentEntry.Tags.Contains(tag) ? "active" : "")"
+                         @onclick="() => ToggleTag(tag)">
+                        @tag
+                    </div>
+                }
+            </div>
+
+            <!-- FAKE RICH TEXT EDITOR -->
+            <label class="section-title">Journal Entry</label>
+            <div class="rich-editor">
+                <div class="toolbar">
+                    <button class="tool-btn">B</button>
+                    <button class="tool-btn">I</button>
+                    <button class="tool-btn">U</button>
+                    <div style="width:1px; background:#ddd; margin:0 5px;"></div>
+                    <button class="tool-btn">H1</button>
+                    <button class="tool-btn">H2</button>
+                    <button class="tool-btn">🔗</button>
+                </div>
+                <textarea placeholder="Start writing here..." @bind="CurrentEntry.Content"></textarea>
+            </div>
+
+            <!-- FOOTER ACTION -->
+            <div class="action-row">
+                <span class="status-text">@SaveStatus</span>
+                <button class="btn-primary" @onclick="SaveEntry">Save Journal</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@code {
+    private DateTime SelectedDate { get; set; } = DateTime.Today;
+    private JournalEntry CurrentEntry { get; set; } = new JournalEntry();
+    private string SaveStatus = "Unsaved changes";
+
+    // Data for UI
+    class MoodOption { public string Name { get; set; } public string Emoji { get; set; } }
+    private List<MoodOption> Moods = new List<MoodOption>
+    {
+        new MoodOption { Name = "Amazing", Emoji = "🤩" },
+        new MoodOption { Name = "Happy", Emoji = "😊" },
+        new MoodOption { Name = "Neutral", Emoji = "😌" },
+        new MoodOption { Name = "Tired", Emoji = "😴" },
+        new MoodOption { Name = "Sad", Emoji = "😢" }
+    };
+
+    private List<string> PredefinedTags = new List<string>
+    { "Work", "Family", "Health", "Fitness", "Ideas", "Travel", "Food" };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Db.InitializeAsync();
+        await LoadEntry();
+    }
+
+    private async Task LoadEntry()
+    {
+        SaveStatus = "Loading...";
+        var existing = await Db.GetEntryByDateAsync(SelectedDate);
+        if (existing != null)
+        {
+            CurrentEntry = existing;
+            SaveStatus = "Last saved: " + existing.CreatedAt.ToShortTimeString();
+        }
+        else
+        {
+            CurrentEntry = new JournalEntry { Date = SelectedDate, Tags = "" };
+            SaveStatus = "New Entry";
+        }
+    }
+
+    private void SetMood(string mood) => CurrentEntry.PrimaryMood = mood;
+
+    private void ToggleTag(string tag)
+    {
+        if (CurrentEntry.Tags.Contains(tag))
+            CurrentEntry.Tags = CurrentEntry.Tags.Replace(tag, "").Replace(",,", ",").Trim(',');
+        else
+            CurrentEntry.Tags = string.IsNullOrEmpty(CurrentEntry.Tags) ? tag : CurrentEntry.Tags + "," + tag;
+    }
+
+    private async Task SaveEntry()
+    {
+        CurrentEntry.Date = SelectedDate;
+        await Db.SaveEntryAsync(CurrentEntry);
+        SaveStatus = "Saved at " + DateTime.Now.ToShortTimeString();
+        await JS.InvokeVoidAsync("alert", "Entry Saved!");
+    }
+
+    private async Task PrevDay() { SelectedDate = SelectedDate.AddDays(-1); await LoadEntry(); }
+    private async Task NextDay() { SelectedDate = SelectedDate.AddDays(1); await LoadEntry(); }
+}
