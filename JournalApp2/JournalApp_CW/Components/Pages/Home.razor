@@ -1,0 +1,223 @@
+﻿@page "/journal"
+@using JournalApp_CW.Models
+@using JournalApp_CW.Services
+@inject JournalService Db
+@inject IJSRuntime JS
+
+<!-- Wrap everything in a div that controls the theme -->
+<div class="@(IsDarkMode ? "dark-theme" : "") layout">
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <div class="brand">
+            <span style="background:var(--primary); color:white; padding:2px 8px; border-radius:6px;">J</span>
+            Journal.
+        </div>
+
+        <div class="menu-item @(CurrentView == "Entry" ? "active" : "")" @onclick='() => SwitchView("Entry")'>
+            📅 Daily Entry
+        </div>
+        <div class="menu-item @(CurrentView == "History" ? "active" : "")" @onclick='() => SwitchView("History")'>
+            🔍 Search & History
+        </div>
+        <div class="menu-item @(CurrentView == "Stats" ? "active" : "")" @onclick='() => SwitchView("Stats")'>
+            📊 Analytics
+        </div>
+
+        <div class="streak-card">
+            <div style="font-size: 2rem; font-weight: 800;">🔥 @Stats.Streak</div>
+            <div style="font-size: 0.85rem; opacity: 0.9;">Day Streak</div>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main">
+
+        <!-- HEADER -->
+        <div class="header">
+            <div>
+                <h2 style="margin:0;">@GetGreeting()</h2>
+                <span style="color:var(--text-muted);">@DateTime.Now.ToLongDateString()</span>
+            </div>
+            <div class="controls-row">
+                <button class="btn-icon" @onclick="ToggleTheme">
+                    @(IsDarkMode ? "☀️ Light" : "🌙 Dark")
+                </button>
+            </div>
+        </div>
+
+        <!-- VIEW 1: DAILY ENTRY -->
+        @if (CurrentView == "Entry")
+        {
+            <div class="header" style="justify-content:center; margin-bottom:20px;">
+                <div class="controls-row" style="background:var(--surface); padding:5px; border-radius:10px; border:1px solid var(--border);">
+                    <button class="btn-icon" style="border:none;" @onclick="PrevDay">◀</button>
+                    <input type="date" style="background:transparent; border:none; color:var(--text-main); font-size:1.1rem; outline:none;"
+                           @bind="SelectedDate" @bind:after="LoadEntry" />
+                    <button class="btn-icon" style="border:none;" @onclick="NextDay">▶</button>
+                </div>
+            </div>
+
+            <div class="editor-card">
+                <span class="section-title">How was your day?</span>
+                <div class="mood-grid">
+                    @foreach (var m in MoodList)
+                    {
+                        <div class="mood-item @(CurrentEntry.PrimaryMood == m.Name ? "selected" : "")"
+                             @onclick="() => SetMood(m.Name)">
+                            <span class="mood-emoji">@m.Emoji</span>
+                            <span style="font-size:0.8rem; font-weight:600;">@m.Name</span>
+                        </div>
+                    }
+                </div>
+
+                <span class="section-title">Tags</span>
+                <div class="tags-wrapper">
+                    @foreach (var tag in PredefinedTags)
+                    {
+                        <div class="tag-chip @(CurrentEntry.Tags.Contains(tag) ? "active" : "")"
+                             @onclick="() => ToggleTag(tag)">
+                            @tag
+                        </div>
+                    }
+                </div>
+
+                <span class="section-title">Journal Content</span>
+                <textarea placeholder="Write your story..." @bind="CurrentEntry.Content"></textarea>
+
+                <button class="btn-primary" @onclick="SaveEntry">Save Entry</button>
+                <div style="clear:both;"></div>
+            </div>
+        }
+
+        <!-- VIEW 2: HISTORY & SEARCH -->
+        @if (CurrentView == "History")
+        {
+            <div class="editor-card">
+                <h3>Search Entries</h3>
+                <input type="text" placeholder="Search by content or tag..."
+                       @bind="SearchTerm" @bind:event="oninput"
+                       style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--border); background:var(--bg-color); color:var(--text-main); margin-bottom:20px;" />
+
+                @foreach (var entry in FilteredHistory)
+                {
+                    <div style="border-bottom:1px solid var(--border); padding:15px 0; display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <div style="font-weight:bold; color:var(--primary);">@entry.Date.ToShortDateString()</div>
+                            <div style="font-size:0.9rem; color:var(--text-muted);">
+                                @(entry.Content.Length > 50 ? entry.Content.Substring(0, 50) + "..." : entry.Content)
+                            </div>
+                            <div style="margin-top:5px;">
+                                <span style="font-size:0.8rem; background:var(--bg-color); padding:2px 6px; border-radius:4px;">@entry.PrimaryMood</span>
+                                <span style="font-size:0.8rem; color:var(--text-muted);">@entry.Tags</span>
+                            </div>
+                        </div>
+                        <button class="btn-icon" @onclick="() => EditEntry(entry.Date)">✏️</button>
+                    </div>
+                }
+                @if (!FilteredHistory.Any())
+                {
+                    <p>No entries found.</p>
+                }
+            </div>
+        }
+
+        <!-- VIEW 3: ANALYTICS -->
+        @if (CurrentView == "Stats")
+        {
+            <div class="editor-card">
+                <h3>Mood Statistics</h3>
+                <p>Total Entries: <strong>@Stats.Total</strong></p>
+
+                <div style="margin-top:20px;">
+                    @foreach (var mood in Stats.Moods)
+                    {
+                        <div style="margin-bottom:10px;">
+                            <div style="display:flex; justify-content:space-between; font-size:0.9rem;">
+                                <span>@mood.Key</span>
+                                <span>@mood.Value</span>
+                            </div>
+                            <!-- Simple CSS Bar Chart -->
+                            <div style="width:100%; background:var(--bg-color); height:10px; border-radius:5px; overflow:hidden;">
+                                <div style="width:@(Math.Min(100, mood.Value * 10))%; background:var(--primary); height:100%;"></div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+    </div>
+</div>
+
+@code {
+    // State
+    private string CurrentView = "Entry";
+    private bool IsDarkMode = false;
+    private DateTime SelectedDate { get; set; } = DateTime.Today;
+    private JournalEntry CurrentEntry { get; set; } = new JournalEntry();
+    private List<JournalEntry> HistoryList = new List<JournalEntry>();
+    private string SearchTerm = "";
+    private (int Total, int Streak, Dictionary<string, int> Moods) Stats;
+
+    // Static Data
+    class MoodItem { public string Name { get; set; } public string Emoji { get; set; } }
+    private List<MoodItem> MoodList = new List<MoodItem>
+    {
+        new MoodItem { Name = "Happy", Emoji = "😊" }, new MoodItem { Name = "Excited", Emoji = "🤩" },
+        new MoodItem { Name = "Neutral", Emoji = "😐" }, new MoodItem { Name = "Sad", Emoji = "😢" },
+        new MoodItem { Name = "Stressed", Emoji = "😫" }
+    };
+    private List<string> PredefinedTags = new List<string> { "Work", "Study", "Health", "Travel", "Ideas" };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Db.InitializeAsync();
+        await LoadEntry();
+        await RefreshData();
+    }
+
+    // Logic
+    private async Task RefreshData()
+    {
+        HistoryList = await Db.GetEntriesAsync();
+        Stats = await Db.GetStatsAsync();
+    }
+
+    private IEnumerable<JournalEntry> FilteredHistory =>
+        string.IsNullOrWhiteSpace(SearchTerm)
+        ? HistoryList
+        : HistoryList.Where(e => e.Content.Contains(SearchTerm, StringComparison.OrdinalIgnoreCase) ||
+                                 e.Tags.Contains(SearchTerm, StringComparison.OrdinalIgnoreCase));
+
+    private async Task LoadEntry()
+    {
+        var existing = await Db.GetEntryByDateAsync(SelectedDate);
+        CurrentEntry = existing ?? new JournalEntry { Date = SelectedDate, Tags = "" };
+    }
+
+    private async Task SaveEntry()
+    {
+        CurrentEntry.Date = SelectedDate;
+        await Db.SaveEntryAsync(CurrentEntry);
+        await JS.InvokeVoidAsync("alert", "Saved!");
+        await RefreshData();
+    }
+
+    private void ToggleTheme() => IsDarkMode = !IsDarkMode;
+    private void SwitchView(string view) { CurrentView = view; RefreshData(); }
+    private void SetMood(string m) => CurrentEntry.PrimaryMood = m;
+    private void ToggleTag(string t) => CurrentEntry.Tags = CurrentEntry.Tags.Contains(t)
+        ? CurrentEntry.Tags.Replace(t, "").Replace(",,", ",").Trim(',')
+        : (string.IsNullOrEmpty(CurrentEntry.Tags) ? t : CurrentEntry.Tags + "," + t);
+
+    private void EditEntry(DateTime date) { SelectedDate = date; SwitchView("Entry"); LoadEntry(); }
+    private async Task PrevDay() { SelectedDate = SelectedDate.AddDays(-1); await LoadEntry(); }
+    private async Task NextDay() { SelectedDate = SelectedDate.AddDays(1); await LoadEntry(); }
+
+    private string GetGreeting()
+    {
+        var h = DateTime.Now.Hour;
+        return h < 12 ? "Good Morning" : h < 18 ? "Good Afternoon" : "Good Evening";
+    }
+}

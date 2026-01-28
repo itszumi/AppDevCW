@@ -1,0 +1,70 @@
+﻿@page "/"
+@using JournalApp_CW.Services
+@inject AuthService Auth
+@inject NavigationManager Nav
+
+<div class="login-layout">
+    <div class="login-card">
+        <!-- Logo -->
+        <h1 style="color:var(--primary); margin-bottom:10px; font-weight:800; letter-spacing:-1px;">
+            Journal.
+        </h1>
+        <p style="color:var(--text-muted); margin-bottom:30px;">Secure Daily Logging</p>
+
+        <!-- Form -->
+        <div class="form-group">
+            <label class="form-label">Username</label>
+            <input type="text" @bind="Username" placeholder="e.g. admin" />
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Password</label>
+            <input type="password" @bind="Password" placeholder="••••••••" />
+        </div>
+
+        <!-- Error Message -->
+        <p style="color:#ef4444; font-size:0.9rem; min-height:20px; margin-bottom:10px;">
+            @ErrorMessage
+        </p>
+
+        <!-- Buttons -->
+        <button class="btn-primary" @onclick="HandleLogin">Login</button>
+        <button class="btn-secondary" @onclick="HandleRegister">Register New Account</button>
+    </div>
+</div>
+
+@code {
+    private string Username = "";
+    private string Password = "";
+    private string ErrorMessage = "";
+
+    private async Task HandleLogin()
+    {
+        if (await Auth.LoginAsync(Username, Password))
+        {
+            Nav.NavigateTo("/journal");
+        }
+        else
+        {
+            ErrorMessage = "Invalid Username or Password";
+        }
+    }
+
+    private async Task HandleRegister()
+    {
+        if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(Password))
+        {
+            ErrorMessage = "Please fill in all fields.";
+            return;
+        }
+
+        if (await Auth.RegisterAsync(Username, Password))
+        {
+            Nav.NavigateTo("/");
+        }
+        else
+        {
+            ErrorMessage = "Username already taken.";
+        }
+    }
+}
