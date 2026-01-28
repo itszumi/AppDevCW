@@ -1,0 +1,239 @@
+﻿@page "/analytics"
+@using JournalApp_CW.Services
+@using JournalApp_CW.Models
+@inject AnalyticsService StatsService
+@inject AuthService Auth
+@inject NavigationManager Nav
+
+<div class="analytics-container">
+    <div class="header-row">
+        <h3>Analytics Dashboard</h3>
+        <div class="filters">
+            <input type="date" @bind="startDate" class="date-input" />
+            <input type="date" @bind="endDate" class="date-input" />
+            <button @onclick="RefreshData" class="btn-refresh">Filter</button>
+        </div>
+    </div>
+
+    <!-- Top Stats Row -->
+    <div class="stats-grid">
+        <div class="stat-card streak">
+            <span class="label">Current Streak</span>
+            <span class="value">@Data.CurrentStreak Days</span>
+            <span class="sub">Longest: @Data.LongestStreak</span>
+        </div>
+        <div class="stat-card mood">
+            <span class="label">Most Frequent Mood</span>
+            <span class="value">@Data.MostFrequentMood</span>
+            <span class="sub">Missed Days: @Data.MissedDaysCount</span>
+        </div>
+        <div class="stat-card wordcount">
+            <span class="label">Avg Word Count</span>
+            <span class="value">@Data.AvgWordCount</span>
+            <span class="sub">Words per entry</span>
+        </div>
+    </div>
+
+    <div class="main-grid">
+        <!-- Mood Distribution Bar Chart -->
+        <div class="chart-box">
+            <h4>Mood Distribution</h4>
+            <div class="dist-bar">
+                @foreach (var m in Data.MoodDistribution)
+                {
+                    <div class="dist-segment @m.Key.ToLower()" style="width:@m.Value%">
+                        @if (m.Value > 10)
+                        {
+                            <span>@m.Key (@Math.Round(m.Value)%)</span>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Tag Usage -->
+        <div class="chart-box">
+            <h4>Top Tags</h4>
+            @foreach (var tag in Data.TagCounts)
+            {
+                <div class="tag-row">
+                    <span class="tag-name">@tag.Key</span>
+                    <div class="tag-bar-bg">
+                        <div class="tag-bar-fill" style="width:@(tag.Value * 10)%"></div>
+                    </div>
+                    <span class="tag-val">@tag.Value</span>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .analytics-container {
+        padding: 20px;
+        color: #333;
+        font-family: sans-serif;
+    }
+
+    .header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .date-input {
+        border: 1px solid #ddd;
+        padding: 5px;
+        border-radius: 4px;
+        margin-right: 5px;
+    }
+
+    .btn-refresh {
+        background: #8b5cf6;
+        color: white;
+        border: none;
+        padding: 6px 15px;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-bottom: 25px;
+    }
+
+    .stat-card {
+        padding: 20px;
+        border-radius: 12px;
+        background: var(--bg-card, white);
+        color: var(--text-color, black);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        display: flex;
+        flex-direction: column;
+    }
+
+        .stat-card.streak {
+            border-left: 5px solid #f59e0b;
+        }
+
+        .stat-card.mood {
+            border-left: 5px solid #10b981;
+        }
+
+        .stat-card.wordcount {
+            border-left: 5px solid #3b82f6;
+        }
+
+        .stat-card .label {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .stat-card .value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+
+        .stat-card .sub {
+            font-size: 0.8rem;
+            color: #999;
+        }
+
+    .main-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+
+    .chart-box {
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+
+    /* Mood Distribution Bar */
+    .dist-bar {
+        display: flex;
+        height: 30px;
+        border-radius: 15px;
+        overflow: hidden;
+        margin-top: 15px;
+        background: #eee;
+    }
+
+    .dist-segment {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.7rem;
+        color: white;
+        font-weight: bold;
+        transition: width 0.5s;
+    }
+
+    .positive {
+        background: #10b981;
+    }
+
+    .neutral {
+        background: #6b7280;
+    }
+
+    .negative {
+        background: #ef4444;
+    }
+
+    /* Tag Bars */
+    .tag-row {
+        display: flex;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+
+    .tag-name {
+        width: 80px;
+        font-size: 0.85rem;
+    }
+
+    .tag-bar-bg {
+        flex-grow: 1;
+        height: 8px;
+        background: #f3f4f6;
+        border-radius: 4px;
+        margin: 0 10px;
+        position: relative;
+    }
+
+    .tag-bar-fill {
+        height: 100%;
+        background: #8b5cf6;
+        border-radius: 4px;
+    }
+
+    .tag-val {
+        font-size: 0.85rem;
+        color: #666;
+    }
+</style>
+
+@code {
+    private AnalyticsData Data = new();
+    private DateTime startDate = DateTime.Today.AddMonths(-1);
+    private DateTime endDate = DateTime.Today;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Auth.IsLoggedIn) { Nav.NavigateTo("/"); return; }
+        await RefreshData();
+    }
+
+    private async Task RefreshData()
+    {
+        Data = await StatsService.GetAnalyticsAsync(startDate, endDate);
+    }
+}

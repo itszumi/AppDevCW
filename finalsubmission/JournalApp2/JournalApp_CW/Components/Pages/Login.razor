@@ -1,0 +1,63 @@
+﻿@page "/"
+@using JournalApp_CW.Services
+@inject AuthService Auth
+@inject NavigationManager Nav
+
+<div class="login-layout">
+    <div class="login-card">
+        <h1 style="color:var(--primary); margin-bottom:10px; font-weight:800;">Journal.</h1>
+        <p style="color:var(--text-muted); margin-bottom:30px;">Secure Daily Logging</p>
+
+        <div class="form-group">
+            <label class="form-label">Username</label>
+            <input type="text" @bind="Username" />
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Password</label>
+            <input type="password" @bind="Password" />
+        </div>
+
+        <p style="color:#ef4444; font-size:0.9rem;">@ErrorMessage</p>
+
+        <button class="btn-primary" @onclick="HandleLogin">Login</button>
+        <button class="btn-secondary" @onclick="HandleRegister" style="margin-top:10px;">Register New Account</button>
+    </div>
+</div>
+
+@code {
+    private string Username = "";
+    private string Password = "";
+    private string ErrorMessage = "";
+
+    private async Task HandleLogin()
+    {
+        if (await Auth.LoginAsync(Username, Password))
+            Nav.NavigateTo("/journal");
+        else
+            ErrorMessage = "Invalid Username or Password";
+    }
+
+    private async Task HandleRegister()
+    {
+        if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(Password))
+        {
+            ErrorMessage = "Please fill in all fields.";
+            return;
+        }
+
+        if (await Auth.RegisterAsync(Username, Password))
+            Nav.NavigateTo("/journal");
+        else
+            ErrorMessage = "Username already taken.";
+    }
+}
+.form-label {
+    color: var(--text-main) !important; /* This makes label visible in dark mode */
+    font-weight: 600;
+}
+
+.login-card {
+    background: var(--card-bg) !important;
+    color: var(--text-main) !important;
+}

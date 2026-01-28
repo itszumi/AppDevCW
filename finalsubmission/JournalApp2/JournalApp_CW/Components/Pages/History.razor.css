@@ -1,0 +1,168 @@
+﻿.history-container {
+    padding: 40px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 40px;
+}
+
+.title-info h1 {
+    margin: 0;
+    font-size: 1.8rem;
+}
+
+.title-info p {
+    margin: 5px 0 0;
+    color: #888;
+}
+
+.search-bar {
+    position: relative;
+    width: 300px;
+}
+
+    .search-bar i {
+        position: absolute;
+        left: 15px;
+        top: 12px;
+        color: #ccc;
+    }
+
+    .search-bar input {
+        width: 100%;
+        padding: 10px 15px 10px 40px;
+        border-radius: 25px;
+        border: 1px solid #eee;
+        outline: none;
+    }
+
+.entries-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+}
+
+.journal-entry {
+    background: white;
+    border-radius: 16px;
+    display: flex;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    border: 1px solid #f0f0f0;
+}
+
+.mood-stripe {
+    width: 6px;
+    flex-shrink: 0;
+}
+
+    .mood-stripe.amazing {
+        background: #10b981;
+    }
+
+    .mood-stripe.sad {
+        background: #ef4444;
+    }
+
+    .mood-stripe.neutral {
+        background: #94a3b8;
+    }
+
+.entry-main {
+    padding: 20px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.entry-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+}
+
+.date-block {
+    display: flex;
+    flex-direction: column;
+    line-height: 1;
+}
+
+.day {
+    font-size: 1.6rem;
+    font-weight: 800;
+}
+
+.month-year {
+    font-size: 0.7rem;
+    color: #999;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-top: 2px;
+}
+
+.delete-btn {
+    background: none;
+    border: none;
+    color: #ddd;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+    .delete-btn:hover {
+        color: #ef4444;
+    }
+
+.entry-body p {
+    color: #555;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-bottom: 20px;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.entry-footer {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.mood-pill {
+    font-size: 0.6rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 4px;
+    width: fit-content;
+}
+
+    .mood-pill.amazing {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .mood-pill.sad {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+.tag-list {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.tag-item {
+    font-size: 0.75rem;
+    color: var(--primary-brand);
+    font-weight: 600;
+}

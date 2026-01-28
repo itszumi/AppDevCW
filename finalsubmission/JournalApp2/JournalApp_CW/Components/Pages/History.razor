@@ -1,0 +1,133 @@
+﻿@page "/history"
+@using JournalApp_CW.Services
+@using JournalApp_CW.Models
+@inject JournalService JournalService
+@inject AuthService Auth
+@inject NavigationManager Nav
+
+<div class="history-container">
+    <div class="history-header">
+        <div>
+            <h3>Journal History</h3>
+            <p>@FilteredEntries.Count() entries found</p>
+        </div>
+        <div class="search-wrapper">
+            <input type="text" @bind="searchTerm" @bind:event="oninput" placeholder="Search entries..." />
+        </div>
+    </div>
+
+    @if (AllEntries == null)
+    {
+        <div>Loading memories...</div>
+    }
+    else
+    {
+        <div class="entries-list">
+            @foreach (var entry in FilteredEntries)
+            {
+                <div class="journal-card">
+                    <div class="mood-accent @entry.PrimaryMood.ToLower()"></div>
+                    <div class="card-content">
+                        <div class="card-top">
+                            <span class="entry-date">@entry.Date.ToString("dd MMMM yyyy")</span>
+                            <div class="actions">
+                                <!--  Pencil Icon -->
+                                <button class="btn-edit" @onclick='() => Nav.NavigateTo($"/journal/{entry.Date:yyyy-MM-dd}")'>
+                                    <i class="oi oi-pencil"></i> Edit
+                                </button>
+
+                                <!--  Trash Icon -->
+                                <button class="btn-delete" @onclick="() => HandleDelete(entry.Id)" title="Delete Entry">
+                                    <i class="oi oi-trash"></i>Delete
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="entry-text">@entry.Content</div>
+
+                        <div class="card-footer">
+                            <span class="mood-label @entry.PrimaryMood.ToLower()">@entry.PrimaryMood</span>
+                            <div class="tags-row">
+                                @foreach (var tag in (entry.Tags ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries))
+                                {
+                                    <span class="tag-item">#@tag.Trim()</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<JournalEntry> AllEntries;
+    private string searchTerm = "";
+
+    private IEnumerable<JournalEntry> FilteredEntries =>
+        string.IsNullOrWhiteSpace(searchTerm)
+        ? AllEntries ?? new()
+        : (AllEntries ?? new()).Where(e => (e.Content?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false)
+                             || (e.Tags?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false));
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Auth.IsLoggedIn) Nav.NavigateTo("/");
+        else await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        AllEntries = await JournalService.GetEntriesAsync();
+        StateHasChanged();
+    }
+
+    private async Task HandleDelete(int id)
+    {
+        // Optional: Simple browser confirmation
+        // if (await JS.InvokeAsync<bool>("confirm", "Delete this entry permanently?")) { ... }
+
+        await JournalService.DeleteEntryAsync(id);
+        await LoadData(); // Refresh list immediately
+    }
+}
+<style>
+    .actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .btn-edit {
+        background-color: #6366f1;
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 0.9rem;
+    }
+
+    .btn-delete {
+        background-color: #fee2e2; /* Light red background */
+        color: #ef4444; /* Dark red icon */
+        border: 1px solid #fecaca;
+        padding: 6px 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+        .btn-delete:hover {
+            background-color: #ef4444; /* Solid red on hover */
+            color: white;
+        }
+
+    .oi {
+        font-size: 0.9rem;
+    }
+</style>

@@ -1,0 +1,188 @@
+﻿@page "/journal"
+@page "/journal/{DateStr}" 
+@using JournalApp_CW.Models
+@using JournalApp_CW.Services
+@inject JournalService Db
+@inject AuthService Auth
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+
+<div class="header">
+    <div>
+        <h2 style="margin:0;">Good Day, @Auth.CurrentUser?.Username 🔥 @CurrentStreak</h2>
+        <span style="color:var(--text-muted);">@SelectedDate.ToLongDateString()</span>
+    </div>
+</div>
+
+<div class="editor-card">
+    <!-- Date Navigation -->
+    <div style="text-align:center; margin-bottom:20px;">
+        <button class="btn-icon" @onclick="PrevDay">◀</button>
+        <input type="date" class="date-input" @bind="SelectedDate" @bind:after="LoadEntry" />
+        <button class="btn-icon" @onclick="NextDay">▶</button>
+    </div>
+
+    <!-- Mood Section -->
+    <span class="section-title">How are you feeling?</span>
+    <div class="mood-grid">
+        @foreach (var m in MoodList)
+        {
+            <div class="mood-item @(CurrentEntry.PrimaryMood == m.Name ? "selected" : "")" @onclick="() => SetMood(m.Name)">
+                <span class="mood-emoji">@m.Emoji</span> 
+                <span class="mood-name">@m.Name</span>
+            </div>
+        }
+    </div>
+
+    <!-- Primary Tags -->
+    <span class="section-title">Primary Tags</span>
+    <div class="tags-wrapper">
+        @foreach (var tag in PredefinedTags)
+        {
+            <div class="tag-chip @(IsTagSelected(tag) ? "active" : "")" @onclick="() => ToggleTag(tag)">@tag</div>
+        }
+    </div>
+
+    <!-- Custom Secondary Tags -->
+    <span class="section-title">Custom Secondary Tags</span>
+    <div class="custom-tag-section">
+        <div class="custom-tag-input">
+            <input type="text" placeholder="Add custom tag (e.g. Rainy Day, Coffee)" 
+                   @bind="newCustomTag" @onkeyup="HandleTagKeyUp" />
+            <button class="btn-add-tag" @onclick="AddCustomTag">+</button>
+        </div>
+        <div class="tags-wrapper secondary">
+            @foreach (var tag in GetSecondaryTags())
+            {
+                <div class="tag-chip secondary">
+                    #@tag 
+                    <span class="remove-tag" @onclick="() => ToggleTag(tag)">×</span>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Content -->
+    <span class="section-title">Write your story</span>
+    <div class="rich-editor-container">
+        <div class="toolbar">
+            <button class="tool-btn" @onclick='() => AddMd("**")'>B</button>
+            <button class="tool-btn" @onclick='() => AddMd("*")'>I</button>
+            <button class="tool-btn" @onclick='() => AddMd("# ")'>H1</button>
+        </div>
+        <textarea placeholder="Tell me about your day..." @bind="CurrentEntry.Content"></textarea>
+    </div>
+
+    <button class="btn-primary" @onclick="SaveEntry">
+        @(IsEditMode ? "Update Entry" : "Save Today's Story")
+    </button>
+</div>
+@code {
+    [Parameter] public string DateStr { get; set; }
+
+    private DateTime SelectedDate = DateTime.Today;
+    private JournalEntry CurrentEntry = new JournalEntry();
+    private string newCustomTag = "";
+    private int CurrentStreak = 0;
+    private bool IsEditMode => !string.IsNullOrEmpty(DateStr);
+
+    class MoodItem { public string Name { get; set; } public string Emoji { get; set; } }
+    private List<MoodItem> MoodList = new List<MoodItem> {
+        new MoodItem{Name="Amazing",Emoji="🤩"}, new MoodItem{Name="Happy",Emoji="😊"},
+        new MoodItem{Name="Neutral",Emoji="😐"}, new MoodItem{Name="Tired",Emoji="😴"},
+        new MoodItem{Name="Sad",Emoji="😢"}
+    };
+
+    private List<string> PredefinedTags = new List<string> {
+        "Work", "Fitness", "Family", "Travel", "Health", "Social", "Finance", "Hobby"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Auth.IsLoggedIn) { Nav.NavigateTo("/"); return; }
+        await Db.InitializeAsync();
+
+        // Load initial streak
+        await CalculateStreak();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // If editing from History, parse the date from URL
+        if (!string.IsNullOrEmpty(DateStr) && DateTime.TryParse(DateStr, out var d))
+        {
+            SelectedDate = d;
+        }
+        await LoadEntry();
+    }
+
+    private async Task LoadEntry()
+    {
+        // Fetch from DB
+        var entry = await Db.GetEntryByDateAsync(SelectedDate);
+        if (entry != null)
+        {
+            CurrentEntry = entry;
+        }
+        else
+        {
+            // Reset for new entry on this date
+            CurrentEntry = new JournalEntry
+            {
+                Date = SelectedDate,
+                Tags = "",
+                UserId = Auth.CurrentUser.Id,
+                Content = ""
+            };
+        }
+        StateHasChanged();
+    }
+
+    private async Task SaveEntry()
+    {
+        CurrentEntry.Date = SelectedDate;
+        await Db.SaveEntryAsync(CurrentEntry);
+        await CalculateStreak();
+        await JS.InvokeVoidAsync("alert", "Journal Saved Successfully!");
+
+        // After saving, go to history to see the result
+        Nav.NavigateTo("/history");
+    }
+
+    private async Task CalculateStreak()
+    {
+        var allEntries = await Db.GetEntriesAsync();
+        if (allEntries == null || !allEntries.Any()) { CurrentStreak = 0; return; }
+
+        var dates = allEntries.Select(e => e.Date.Date).Distinct().OrderByDescending(d => d).ToList();
+        DateTime today = DateTime.Today;
+        if (dates[0] != today && dates[0] != today.AddDays(-1)) { CurrentStreak = 0; return; }
+
+        int streak = 0;
+        DateTime nextExpectedDate = dates[0];
+        foreach (var date in dates)
+        {
+            if (date == nextExpectedDate) { streak++; nextExpectedDate = nextExpectedDate.AddDays(-1); }
+            else break;
+        }
+        CurrentStreak = streak;
+    }
+
+    private void AddCustomTag()
+    {
+        if (!string.IsNullOrWhiteSpace(newCustomTag)) { ToggleTag(newCustomTag.Trim()); newCustomTag = ""; }
+    }
+    private void HandleTagKeyUp(KeyboardEventArgs e) { if (e.Key == "Enter") AddCustomTag(); }
+    private bool IsTagSelected(string tag) => (CurrentEntry.Tags ?? "").Split(',').Select(t => t.Trim()).Contains(tag);
+    private List<string> GetSecondaryTags() => (CurrentEntry.Tags ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries).Select(t => t.Trim()).Where(t => !PredefinedTags.Contains(t)).ToList();
+    private void ToggleTag(string t)
+    {
+        var tagList = (CurrentEntry.Tags ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries).Select(tag => tag.Trim()).ToList();
+        if (tagList.Contains(t)) tagList.Remove(t); else tagList.Add(t);
+        CurrentEntry.Tags = string.Join(",", tagList);
+    }
+    private void AddMd(string s) => CurrentEntry.Content += s;
+    private void SetMood(string m) => CurrentEntry.PrimaryMood = m;
+    private async Task PrevDay() { SelectedDate = SelectedDate.AddDays(-1); await LoadEntry(); }
+    private async Task NextDay() { SelectedDate = SelectedDate.AddDays(1); await LoadEntry(); }
+}

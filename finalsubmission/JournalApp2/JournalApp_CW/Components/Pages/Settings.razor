@@ -1,0 +1,337 @@
+﻿@page "/settings"
+@using JournalApp_CW.Services
+@inject ExportService Export
+@inject IJSRuntime JS
+@inject AuthService Auth
+@inject NavigationManager Nav
+
+<div class="settings-container">
+    <!-- Profile Section -->
+    <div class="settings-section">
+        <div class="section-header"><i class="oi oi-person"></i> Profile</div>
+        <div class="settings-card profile-card">
+            <div class="avatar">@Auth.CurrentUser?.Username.Substring(0, 1).ToUpper()</div>
+            <div class="user-info">
+                <strong>@Auth.CurrentUser?.Username</strong>
+                <span>@Auth.CurrentUser?.Username.ToLower()@@journal.com</span>
+            </div>
+            <button class="text-btn" @onclick='() => Nav.NavigateTo("/")'>Logout</button>
+        </div>
+    </div>
+
+    <!-- Appearance Section (Now Active) -->
+    <div class="settings-section">
+        <div class="section-header"><i class="oi oi-brush"></i> Appearance</div>
+        <div class="settings-card">
+            <div class="setting-row">
+                <div>
+                    <strong>Dark Mode</strong>
+                    <p>Enable dark theme across the app</p>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" @bind="IsDarkMode" @bind:after="UpdateTheme">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <!-- Privacy Section -->
+    <div class="settings-section">
+        <div class="section-header"><i class="oi oi-lock-locked"></i> Privacy</div>
+        <div class="settings-card">
+            <div class="setting-row">
+                <div>
+                    <strong>Biometric Lock</strong>
+                    <p>Use fingerprint or Face ID to unlock</p>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" checked disabled>
+                    <span class="slider round"></span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Section -->
+    <div class="settings-section">
+        <div class="section-header"><i class="oi oi-data-transfer"></i> Data</div>
+        <div class="settings-card clickable" @onclick="DownloadPdf">
+            <div class="setting-row">
+                <div class="icon-row">
+                    <i class="oi oi-cloud-download"></i>
+                    <div>
+                        <strong>Export to PDF</strong>
+                        <p>Download all your entries</p>
+                    </div>
+                </div>
+                <i class="oi oi-chevron-right"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Danger Zone -->
+    <div class="settings-section">
+        <div class="section-header danger"><i class="oi oi-warning"></i> Danger Zone</div>
+        <div class="settings-card danger-card">
+            <button class="btn-danger" @onclick="HandleDeleteAll">Clear All Data</button>
+            <p>This action cannot be undone. All entries will be permanently deleted.</p>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool IsDarkMode;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Auth.IsLoggedIn) { Nav.NavigateTo("/"); return; }
+
+        // Load theme preference on start
+        IsDarkMode = await JS.InvokeAsync<bool>("themeInterop.getStoredTheme");
+    }
+
+    private async Task UpdateTheme()
+    {
+        await JS.InvokeVoidAsync("themeInterop.applyTheme", IsDarkMode);
+    }
+
+    private async Task DownloadPdf()
+    {
+        var pdfBytes = await Export.GenerateJournalPdf();
+        if (pdfBytes != null)
+        {
+            var fileName = $"Journal_Export_{DateTime.Now:yyyyMMdd}.pdf";
+            await JS.InvokeVoidAsync("DownloadFile", fileName, Convert.ToBase64String(pdfBytes));
+        }
+    }
+
+    private async Task HandleDeleteAll()
+    {
+        bool confirmed = await JS.InvokeAsync<bool>("confirm", "Are you absolutely sure? This will delete EVERYTHING.");
+        if (confirmed)
+        {
+            // Call your existing service method
+            // await Db.DeleteAllUserDataAsync();
+            await JS.InvokeVoidAsync("alert", "All data has been wiped.");
+            Nav.NavigateTo("/journal");
+        }
+    }
+}
+
+<style>
+    .settings-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        font-family: 'Segoe UI', sans-serif;
+    }
+
+    .settings-section {
+        margin-bottom: 30px;
+    }
+
+    .section-header {
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: #555;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+        .section-header.danger {
+            color: #dc3545;
+        }
+
+    .settings-card {
+        background: var(--card-bg) !important;
+        color: var(--text-main) !important;
+        border: 1px solid var(--border-color) !important;
+    }
+
+    .section-header {
+        color: var(--text-muted) !important;
+    }
+
+    .settings-container {
+        color: var(--text-main) !important;
+    }
+
+        .settings-card.clickable {
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+            .settings-card.clickable:hover {
+                background: #fafafa;
+            }
+
+    .profile-card {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .avatar {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: #a855f7;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+    }
+
+    .user-info {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+        .user-info span {
+            font-size: 0.85rem;
+            color: #777;
+        }
+
+    .setting-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+        .setting-row p {
+            margin: 0;
+            font-size: 0.8rem;
+            color: #888;
+        }
+
+        .setting-row.vertical {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+    .icon-row {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+        .icon-row i {
+            font-size: 1.2rem;
+            color: #777;
+        }
+
+    .color-picker {
+        display: flex;
+        gap: 10px;
+    }
+
+    .color-dot {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        cursor: pointer;
+        border: 2px solid transparent;
+    }
+
+        .color-dot.active {
+            border-color: #333;
+        }
+
+    .purple {
+        background: #a855f7;
+    }
+
+    .blue {
+        background: #3b82f6;
+    }
+
+    .green {
+        background: #10b981;
+    }
+
+    .pink {
+        background: #ec4899;
+    }
+
+    .orange {
+        background: #f59e0b;
+    }
+
+    .btn-danger {
+        width: 100%;
+        background: #ef4444;
+        color: white;
+        border: none;
+        padding: 10px;
+        border-radius: 8px;
+        font-weight: bold;
+        margin-bottom: 8px;
+    }
+
+    .danger-card p {
+        text-align: center;
+        font-size: 0.8rem;
+        color: #888;
+        margin: 0;
+    }
+
+    .text-btn {
+        background: none;
+        border: none;
+        color: #a855f7;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    /* Toggle Switch CSS */
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 40px;
+        height: 22px;
+    }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: .4s;
+        border-radius: 34px;
+    }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+    input:checked + .slider {
+        background-color: #a855f7;
+    }
+
+        input:checked + .slider:before {
+            transform: translateX(18px);
+        }
+</style>
