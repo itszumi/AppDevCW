@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
-using JournalApp_CW.Services; // IMPORTANT
-using JournalApp_CW.Data;     // IMPORTANT
+using JournalApp_CW.Services; 
+using JournalApp_CW.Data;     
 
 namespace JournalApp_CW
 {
@@ -22,7 +22,7 @@ namespace JournalApp_CW
             builder.Services.AddBlazorWebViewDeveloperTools();
 #endif
 
-            // --- MAKE SURE THESE 2 LINES ARE HERE ---
+            
             builder.Services.AddSingleton<JournalService>();
             builder.Services.AddSingleton<AuthService>();
             builder.Services.AddSingleton<AnalyticsService>();
